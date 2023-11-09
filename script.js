@@ -1,106 +1,119 @@
-let canvas = document.getElementById("myCanvas");
-let ctx = canvas.getContext("2d");
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
 
+const CANVAS_HEIGHT = canvas.height;
+const CANVAS_WIDTH = canvas.width;
+const GROUND_HEIGHT = 200;
+const GROUND_LINE = CANVAS_HEIGHT - GROUND_HEIGHT;
+const CUBE_SIZE = 50;
+let element;
+
+//JUMP MOTION
+const JUMP_PACE = 5;
 let jump = 0;
-let x = 100;
-let y = 574;
-let timer;
+let jump_height = 6;
+let jump_timer;
 let rotationAngle = 0;
-let movingUp = true;
+let movingDown = false;
+
+//OBSTACLE MOTION
+const obstacle = document.createElement("canvas");
+const obstacleCanvas = obstacle.getContext("2d");
+obstacleCanvas.width = CANVAS_WIDTH;
+obstacleCanvas.height = CANVAS_HEIGHT;
+const OBSTACLE_PACE = 10;
+let moveHorizontal = 0;
+let obstacle_timer;
+let moveLeft = false;
+
+//if player status = 0, game is over
+let playerStatus = 1;
+
+// colours for background and ground
+let r = 0, g = 0, b = 200;
+
+// for music
+const audioPlayer = new Audio('BaseAfterBase.mp3');
 
 function drawBackground() {
-    ctx.fillStyle = 'white'
     ctx.save();
-    ctx.translate(0, 650);
+    ctx.fillStyle = "rgb(" + r + ", " + g + ", " + b + ")";
+    ctx.translate(0, GROUND_LINE);
     ctx.beginPath();
     ctx.lineTo(0, 0);
-    ctx.lineTo(1900, 0);
-    ctx.lineTo(1900, 200);
-    ctx.lineTo(0, 200);
+    ctx.lineTo(CANVAS_WIDTH, 0);
+    ctx.lineTo(CANVAS_WIDTH, GROUND_HEIGHT);
+    ctx.lineTo(0, GROUND_HEIGHT);
     ctx.fill();
-    // ctx.stroke();
     ctx.restore();
+
+    const squareWidth = (CANVAS_WIDTH - 9 * 25) / 10;
+    ctx.fillStyle = "rgb(" + (r - 50) + ", " + (g - 50) + ", " + (b - 50) + ")";
+    for (let i = 0; i < 12; i++) {
+        const x = i * (squareWidth + 25);
+        ctx.fillRect(x, GROUND_LINE + 25, squareWidth, GROUND_HEIGHT - 25);
+    }
 }
 
-function drawBox(x, y) {
+function drawBox() {
     ctx.fillStyle = 'yellow';
-    ctx.fillRect(x, y,50,50);
+    ctx.fillRect(CUBE_SIZE + 25, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
 }
 
 function boxJump() {
-    // ctx.save();
-    // // for (let i = 0; i > -15; i--) {
-    //     // ctx.clearRect(x,y,50,50);
-    //     let i = 0;
-    //     ctx.translate(0, i);
-    //     ctx.rotate((-6 + i) * Math.PI/180);
-    //     drawBox(x, y);
-        
-    //     if (i == -15) {
-    //         clearInterval(timer);
-    //     }
-    //     i--;
-    // // }
-    // ctx.restore();
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // drawBackground();
-    // for (let i = 0; i < 15; i++) {
-    //     // Move the box upwards and rotate clockwise
-    //     x = x + 3;
-    //     y -= 10; // You can adjust the value to control the speed of upward movement
-    //     rotationAngle += 6; // Rotate clockwise by 6 degrees per frame
-        
-    //     ctx.save();
-    //     ctx.translate(x + 25, y + 25); // Translate to the center of the box
-    //     ctx.rotate(rotationAngle * Math.PI / 180); // Rotate clockwise
-    //     drawBox(-25, -25); // Draw the box centered at (x, y)
-    //     ctx.restore();
-    // }
-
-    // for (let j = 0; j < 15; j++) {
-    //     x -= 3;
-    //     y += 10;
-    //     rotationAngle -= 6;
-
-    //     ctx.save();
-    //     ctx.translate(x + 25, y + 25); // Translate to the center of the box
-    //     ctx.rotate(rotationAngle * Math.PI / 180); // Rotate clockwise
-    //     drawBox(25, 25); // Draw the box centered at (x, y)
-    //     ctx.restore();
-    // }
-    if (movingUp) {
-        y -= 2; // Move upwards
-        rotationAngle += 6; // Rotate clockwise
-        if (y <= 400) { // When the box reaches a certain height
-            movingUp = false; // Start moving downwards
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    drawBackground();
+    ctx.save();
+    console.log(jump);
+    if (movingDown === false) {
+        jump--;
+        rotationAngle += 6;
+        if (jump === -(CUBE_SIZE * 2)) {
+            movingDown = true;
         }
     } else {
-            // Move downwards
-            y += 2;
-            rotationAngle -= 6; // Rotate counterclockwise for downward movement
+        jump++;
+        if (jump === 0) {
+            movingDown = false;
+            clearInterval(jump_timer);
         }
+    }
+    ctx.translate(0, jump);
+    drawBox();
+    ctx.restore();
+}
 
-        // Reset to initial position and start moving upwards again
-        if (y >= 544) {
-            y = 544;
-            movingUp = true;
-        
+function drawObstacles() {
+    ctx.fillStyle = 'red';
+    ctx.fillRect(CUBE_SIZE + CANVAS_WIDTH, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+}
+
+function moveObstacles() {
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    drawBackground();
+    ctx.save();
+    moveHorizontal--;
+    //console.log(moveHorizontal);
+    if (moveHorizontal <= -CANVAS_WIDTH) {
+        moveHorizontal = 0;
     }
     
-    ctx.save();
-    ctx.translate(x + 25, y + 25); // Translate to the center of the box
-    ctx.rotate(rotationAngle * Math.PI / 180); // Rotate
-    ctx.fillRect(-25, -25, 50, 50); // Draw the box using fillRect centered at (x, y)
+    ctx.translate(moveHorizontal, 0);
+    drawObstacles();
     ctx.restore();
 }
 
 function init() {
     drawBackground();
-    drawBox(x, y);
-    document.addEventListener('keypress', function(event){
-        if (event.key === " ") {
-            timer = setInterval(boxJump, 50);
-            boxJump();
+    drawBox();
+    document.addEventListener('keyup', function(event){
+        audioPlayer.play();
+        if ((event.key === " ") && (jump === 0)) {
+            jump_timer = setInterval(boxJump, JUMP_PACE)
+            moveLeft = true;
+        }
+        if (moveLeft) {
+            obstacle_timer = setInterval(moveObstacles, JUMP_PACE);
         }
     })
 }
