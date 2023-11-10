@@ -25,6 +25,7 @@ const OBSTACLE_PACE = 10;
 let moveHorizontal = 0;
 let obstacle_timer;
 let moveLeft = false;
+let obstacle_position = CANVAS_WIDTH + CUBE_SIZE;
 
 //if player status = 0, game is over
 let playerStatus = 1;
@@ -85,22 +86,40 @@ function boxJump() {
 
 function drawObstacles() {
     ctx.fillStyle = 'red';
-    ctx.fillRect(CUBE_SIZE + CANVAS_WIDTH, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+    // ctx.fillRect(CUBE_SIZE + CANVAS_WIDTH, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+    ctx.fillRect(obstacle_position, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
 }
 
 function moveObstacles() {
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    drawBackground();
-    ctx.save();
-    moveHorizontal--;
-    //console.log(moveHorizontal);
-    if (moveHorizontal <= -CANVAS_WIDTH) {
-        moveHorizontal = 0;
-    }
+    // ctx.save();
+    // moveHorizontal--;
+    // if (moveHorizontal <= -CANVAS_WIDTH) {
+    //     moveHorizontal = 0;
+    // }
     
-    ctx.translate(moveHorizontal, 0);
+    // ctx.translate(moveHorizontal, 0);
+    // drawObstacles();
+    // ctx.restore();
+    if (jump === 0){
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        drawBox();
+        drawBackground();
+    } else {
+        ctx.clearRect(obstacle_position - JUMP_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    }
+    obstacle_position -= JUMP_PACE;
+    console.log(obstacle_position);
+    if (obstacle_position <= 0) {
+        obstacle_position = CANVAS_WIDTH + CUBE_SIZE;
+    }
     drawObstacles();
-    ctx.restore();
+}
+
+function startTimers() {
+    if (jump === 0) {
+        jump_timer = setInterval(boxJump, JUMP_PACE);
+        obstacle_timer = setInterval(moveObstacles, JUMP_PACE);
+    }
 }
 
 function init() {
@@ -109,11 +128,7 @@ function init() {
     document.addEventListener('keyup', function(event){
         audioPlayer.play();
         if ((event.key === " ") && (jump === 0)) {
-            jump_timer = setInterval(boxJump, JUMP_PACE)
-            moveLeft = true;
-        }
-        if (moveLeft) {
-            obstacle_timer = setInterval(moveObstacles, JUMP_PACE);
+            startTimers();
         }
     })
 }
