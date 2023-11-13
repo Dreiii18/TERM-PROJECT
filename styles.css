@@ -1,0 +1,50 @@
+body {
+    background-color: black;
+    color: white;
+  }
+
+  h1 {
+    font-family: 'Comic Sans MS', sans-serif;
+    color: white;
+    text-align: center;
+  }
+
+  #myCanvas {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .progress-container {
+    width: 950px;
+    height: 1em;
+    background-color: inherit;
+    border: 1px solid white;
+    border-radius: 1.5em;
+    position: absolute;
+    left: 50%;
+    top: 9vh;
+    transform: translateX(-50%);
+  }
+
+  .progress-bar {
+    position: inherit;
+    width: 950px;
+    height: 0.9em;
+    top: 0.1em;
+    border-radius: 1.5em;
+    background-color: orange;
+    text-align: center;
+    line-height: 30px;
+    max-width: 100%;
+  }
+
+  #reset {
+    position: absolute;
+    margin: auto;
+    top: 600px;
+    left: 925px;
+    text-align: center;
+    font-size: 40px;
+    display: none;
+  }
