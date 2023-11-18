@@ -6,21 +6,22 @@ const CANVAS_HEIGHT = canvas.height;
 const CANVAS_WIDTH = canvas.width;
 const GROUND_HEIGHT = 200;
 const GROUND_LINE = CANVAS_HEIGHT - GROUND_HEIGHT;
-const CUBE_SIZE = 50;
+const CUBE_SIZE = 75;
 
 //--JUMP MOTION--
-const JUMP_PACE = 0.1;
+// const JUMP_PACE = 0.5;
+const JUMP_PACE = 0.05;
 let jump = 0;
 let movingDown = false;
-let jump_timer;
-let jump_timer_active = false;
+let jumpTimer;
+let jumpTimerActive = false;
+const JUMP_HEIGHT = 150;
 
 //--OBSTACLE MOTION--
-const OBSTACLE_PACE = 10;
+const OBSTACLE_PACE = 15;
 const NUM_OBSTACLES = 3;
 const obstaclePositions = [];
 let obstacle_position = CANVAS_WIDTH + CUBE_SIZE;
-let moveHorizontal = 0;
 let moveLeft = false;
 let obstacle_timer_active = false;
 let obstacle_timer;
@@ -30,7 +31,6 @@ const PLATFORM_PACE = 15;
 const NUM_PLATFORM = 3;
 const platformPositions = [];
 let platform_position = CANVAS_WIDTH + CUBE_SIZE + 5;
-let moveHorizontal_Platform = 0;
 let moveLeft_Platform = false;
 let platform_timer_active = false;
 let platform_timer;
@@ -53,24 +53,54 @@ const centerX = canvas.width / 2
 const centerY = canvas.height / 2
 
 //-----MOVE FUNCTIONS-----
+let onPlatform = false;
 function boxJump() {
+    let CUBE_X = CUBE_SIZE + 250;
+    let CUBE_Y = GROUND_LINE - CUBE_SIZE - jump;
+    let PLATFORM_X = 0;
+    let PLATFORM_Y = 0;
+    
     drawBackground();
     drawObstacles();
+    drawPlatforms();
     
-    ctx.save();
-    if (movingDown === false) {
-        jump--;
-        if (jump === -(CUBE_SIZE * 2.5)) {
-            movingDown = true;
-        }
-    } else {
-        jump++;
-        if (jump === 0) {
-            movingDown = false;
-            clearInterval(jump_timer);
-            jump_timer_active = false;
+    for (let i = 0; i < NUM_PLATFORM; i++) {
+        PLATFORM_X = platformPositions[i];
+        PLATFORM_Y = GROUND_LINE - CUBE_SIZE;
+        
+        if (CUBE_X < PLATFORM_X + CUBE_SIZE &&
+            CUBE_X + CUBE_SIZE > PLATFORM_X &&
+            CUBE_Y < PLATFORM_Y + CUBE_SIZE &&
+            CUBE_Y + CUBE_SIZE > PLATFORM_Y) {
+            onPlatform = true;
+            break;
+        } else {
+            if (jump <= 0 && (onPlatform == true)) {
+                onPlatform = false;
+            }
         }
     }
+    ctx.save();
+    if (movingDown === false && (onPlatform == false) && (jumpTimerActive === true)) {
+        if (jump <= -JUMP_HEIGHT) {
+            movingDown = true;
+            canJump = false;
+        } else {
+            jump -= 2;
+        }
+    } else {
+        if (jump === 0 && (onPlatform == false)) {
+            movingDown = false;
+            clearInterval(jumpTimer);
+            jumpTimerActive = false;
+        } else if (jump <= 0 && (onPlatform == true)){
+            jumpTimerActive = false;
+            movingDown = false;
+        } else {
+            jump += 2;
+        }
+    }
+
     ctx.translate(0, jump);
     drawBox();
     ctx.restore();
@@ -86,6 +116,7 @@ function moveObstacles() {
 
     drawGround();
     drawObstacles();
+    drawPlatforms();
     
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         obstaclePositions[i] -= OBSTACLE_PACE - 4;
@@ -100,12 +131,13 @@ function moveObstacles() {
 function movePlatforms() {
     if (jump === 0){
         drawBackground();
-        drawPlatforms();
+        drawBox();
     } else {
         ctx.clearRect(platform_position - PLATFORM_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     }
 
     drawGround();
+    drawObstacles();
     drawPlatforms();
     
     for (let i = 0; i < NUM_PLATFORM; i++) {
@@ -115,12 +147,11 @@ function movePlatforms() {
             platformPositions[i] = CANVAS_WIDTH + CUBE_SIZE;
         }
     }
-    collision();
 }
 
 //-----COLLISION VALIDATION-----
 function collision() {
-    let CUBE_X = CUBE_SIZE + 25;
+    let CUBE_X = CUBE_SIZE + 250;
     let CUBE_Y = GROUND_LINE - CUBE_SIZE - jump;
     let OBSTACLE_X = 0;
     let OBSTACLE_Y = 0;
@@ -142,9 +173,9 @@ function collision() {
 
 //-----TIMERS-----
 function startTimers() {
-    if (!jump_timer_active && jump === 0) {
-        jump_timer_active = true;
-        jump_timer = setInterval(boxJump, JUMP_PACE);
+    if (!jumpTimerActive && jump === 0) {
+        jumpTimerActive = true;
+        jumpTimer = setInterval(boxJump, JUMP_PACE);
     }
     
     if (!obstacle_timer_active) {
@@ -158,37 +189,41 @@ function startTimers() {
         }, OBSTACLE_PACE);
     }
 
-    // if (!platform_timer_active) {
-    //     for (let i = 0; i < NUM_PLATFORM; i++) {
-    //         i += 5;
-    //         platformPositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_PLATFORM);
-    //     }
-    //     platform_timer_active = true;
-    //     platform_timer = setInterval(movePlatforms, PLATFORM_PACE);
-    // }
+    if (!platform_timer_active) {
+        for (let i = 0; i < NUM_PLATFORM; i++) {
+            i += 5;
+            platformPositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_PLATFORM);
+        }
+        platform_timer_active = true;
+        platform_timer = setInterval(movePlatforms, PLATFORM_PACE);
+    }
 }
 
 function stopTimers() {
     gameStatus = 0;
-    clearInterval(jump_timer);
+    clearInterval(jumpTimer);
     clearInterval(obstacle_timer);
     clearInterval(platform_timer);
     obstacle_timer_active = false;
-    jump_timer_active = false;
+    jumpTimerActive = false;
     platform_timer_active = false;
     gameOverText();
     crashAudio.play();
 }
 
-function resetObstacles() {
+function resetObstaclesPlatforms() {
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         ctx.clearRect(obstaclePositions[i] - OBSTACLE_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
     }
     obstaclePositions.length = 0;
+    for (let i = 0; i < NUM_PLATFORM; i++) {
+        ctx.clearRect(platformPositions[i] - OBSTACLE_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+    }
+    platformPositions.length = 0;
 }
 
 function resetButton() {
-    resetObstacles();
+    resetObstaclesPlatforms();
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     obstacle_position = -CANVAS_WIDTH;
     jump = 0;
@@ -263,26 +298,81 @@ function backgroundColourChange() {
     }, 6000);
 }
 
+const playerColours = [
+    'Yellow','Orange', 'Red', 'Cyan', 'LightBlue', 'Red',
+    'Green', 'Silver', 'White', 'PeachPuff', 'Plum'
+    ];
 
+let fillColour, strokeColour;
+do {
+    fillColour = playerColours[Math.floor(Math.random() * playerColours.length)];
+    strokeColour = playerColours[Math.floor(Math.random() * playerColours.length)];
+} while (fillColour === strokeColour);
 
 function drawBox() {
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(CUBE_SIZE + 25, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
-}
+    ctx.lineWidth = 2
+    ctx.fillStyle = fillColour;
+    ctx.strokeStyle = strokeColour;
 
+    //body
+    ctx.beginPath();
+    ctx.moveTo(CUBE_SIZE + 250, GROUND_LINE - CUBE_SIZE);
+    ctx.lineTo(CUBE_SIZE + 75 + 250, GROUND_LINE - CUBE_SIZE);
+    ctx.lineTo(CUBE_SIZE + 75 + 250, GROUND_LINE - CUBE_SIZE + 45);
+    ctx.lineTo(CUBE_SIZE + 75 + 250, GROUND_LINE - CUBE_SIZE + 45);
+    ctx.lineTo(CUBE_SIZE + 47.5 + 250, GROUND_LINE - CUBE_SIZE + 45);
+    ctx.lineTo(CUBE_SIZE + 47.5 + 250, GROUND_LINE - CUBE_SIZE + 60);
+    ctx.lineTo(CUBE_SIZE + 75 + 250, GROUND_LINE - CUBE_SIZE + 60);
+    ctx.lineTo(CUBE_SIZE + 75 + 250, GROUND_LINE - CUBE_SIZE + 75);
+    ctx.lineTo(CUBE_SIZE + 250, GROUND_LINE - CUBE_SIZE + 75);
+    ctx.lineTo(CUBE_SIZE + 250, GROUND_LINE - CUBE_SIZE + 60);
+    ctx.lineTo(CUBE_SIZE + 27.5 + 250, GROUND_LINE - CUBE_SIZE + 60);
+    ctx.lineTo(CUBE_SIZE + 27.5 + 250, GROUND_LINE - CUBE_SIZE + 45);
+    ctx.lineTo(CUBE_SIZE + 250, GROUND_LINE - CUBE_SIZE + 45);
+    ctx.lineTo(CUBE_SIZE + 250, GROUND_LINE - CUBE_SIZE);
+    ctx.fill();
+    ctx.stroke();
+    
+    //eyes
+    ctx.fillStyle = strokeColour;
+    ctx.beginPath();
+    ctx.moveTo(CUBE_SIZE + 15 + 250, GROUND_LINE - CUBE_SIZE + 15);
+    ctx.lineTo(CUBE_SIZE + 30 + 250, GROUND_LINE - CUBE_SIZE + 15);
+    ctx.lineTo(CUBE_SIZE + 30 + 250, GROUND_LINE - CUBE_SIZE + 30);
+    ctx.lineTo(CUBE_SIZE + 15 + 250, GROUND_LINE - CUBE_SIZE + 30);  
+    ctx.fill();
+
+    ctx.moveTo(CUBE_SIZE + 45 + 250, GROUND_LINE - CUBE_SIZE + 15);
+    ctx.lineTo(CUBE_SIZE + 60 + 250, GROUND_LINE - CUBE_SIZE + 15);
+    ctx.lineTo(CUBE_SIZE + 60 + 250, GROUND_LINE - CUBE_SIZE + 30);
+    ctx.lineTo(CUBE_SIZE + 45 + 250, GROUND_LINE - CUBE_SIZE + 30);  
+    ctx.fill();
+}
 function drawObstacles() {
-    ctx.fillStyle = 'red';
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         const obstacleX = obstaclePositions[i];
-        ctx.fillRect(obstacleX, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+        ctx.lineWidth = 3
+        ctx.strokeStyle = "white";
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.moveTo(obstacleX, GROUND_LINE);
+        ctx.lineTo(obstacleX + 70, GROUND_LINE); 
+        ctx.lineTo(obstacleX + 35, GROUND_LINE - CUBE_SIZE + 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
     }
 }
 
 function drawPlatforms() {
+    ctx.lineWidth = 3
     ctx.fillStyle = 'black';
+    ctx.strokeStyle = 'white'
     for (let i = 0; i < NUM_PLATFORM; i++) {
         const platformX = platformPositions[i];
         ctx.fillRect(platformX, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+        ctx.strokeRect(platformX, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
+    
     }
 }
 
@@ -299,6 +389,37 @@ function drawScrollingGround() {
     if (squarePosition <= -squareWidth - 25) {
         squarePosition = 0;
     }
+}
+
+
+// jumppad is currently unused
+let flippedX = -canvas.width / 2;
+let flippedY = -canvas.height / 2
+
+function drawJumpPad() {
+    ctx.lineWidth = 3
+    ctx.strokeStyle = 'gold';
+    ctx.fillStyle = 'yellow';
+    ctx.save();
+    ctx.beginPath();
+    ctx.rotate(Math.PI);
+    ctx.arc(flippedX, flippedY, 50, 0, 1* Math.PI);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawSpike() {
+    ctx.lineWidth = 3
+    ctx.strokeStyle = "white";
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.moveTo(50, 150);
+    ctx.lineTo(150, 150); 
+    ctx.lineTo(100, 50);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 }
 
 function drawProgressBar() {
@@ -334,10 +455,10 @@ function init() {
     drawBox();
     backgroundColourChange();
 
-    document.addEventListener('keyup', function(event){
+    document.addEventListener('keydown', function(event){
         if (gameStatus === 1) {
-            if (((event.key === " ") && (jump === 0)) || ((event.key === "ArrowUp") && (jump === 0))) {
-                audioPlayer.play();
+            if ((event.key === " " || event.key === "ArrowUp") && jump === 0 || onPlatform) {
+                // audioPlayer.play();
                 startTimers();
             } 
         } else {
