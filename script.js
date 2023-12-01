@@ -1,6 +1,8 @@
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 const button = document.getElementById('reset');
+const endScreen = document.getElementById('endScreen');
+const counter = document.getElementById('counter');
 
 const CANVAS_HEIGHT = canvas.height;
 const CANVAS_WIDTH = canvas.width;
@@ -9,144 +11,191 @@ const GROUND_LINE = CANVAS_HEIGHT - GROUND_HEIGHT;
 const CUBE_SIZE = 75;
 
 //--JUMP MOTION--
-// const JUMP_PACE = 0.5;
-const JUMP_PACE = 0.05;
+const JUMP_PACE = 4;
 let jump = 0;
 let movingDown = false;
 let jumpTimer;
 let jumpTimerActive = false;
-const JUMP_HEIGHT = 150;
+let JUMP_HEIGHT = 150;
 
 //--OBSTACLE MOTION--
 const OBSTACLE_PACE = 15;
-const NUM_OBSTACLES = 3;
-const obstaclePositions = [];
-let obstacle_position = CANVAS_WIDTH + CUBE_SIZE;
+const NUM_OBSTACLES = 2;
+let obstaclePositions = [];
+let obstacle_position = CANVAS_WIDTH
 let moveLeft = false;
-let obstacle_timer_active = false;
-let obstacle_timer;
+let obstacleTimerActive = false;
+let obstacleTimer;
 
 //--PLATFORM MOTION--
 const PLATFORM_PACE = 15;
 const NUM_PLATFORM = 3;
-const platformPositions = [];
+let platformPositions = [];
 let platform_position = CANVAS_WIDTH + CUBE_SIZE + 5;
 let moveLeft_Platform = false;
-let platform_timer_active = false;
-let platform_timer;
+let platformTimerActive = false;
+let platformTimer;
+let boxY;
 
 //--FOR MUSIC--
-const audioPlayer = new Audio('BaseAfterBase.mp3');
+const audioPlayer = new Audio('Jumper.mp3');
 const crashAudio = new Audio('crash.mp3');
+audioPlayer.addEventListener('ended', function() {
+    gameStatus = 2;
+    attempts = 1;
+    obstacleTimerActive = false;
+    jumpTimerActive = false;
+    platformTimerActive = false;
+    clearInterval(obstacleTimer);
+    clearInterval(platformTimer);
+    clearInterval(colourTimer);
+    endGameScreen();
+})
 
 //--IF GAME STATUS = 0, GAME IS OVER GAME RESETS--
 let gameStatus = 1;
 const progressBar = document.getElementById("myBar");
+let attempts = 1;
 
 //--SCROLLING GROUND VARIABLES--
-const squarePace = 4;
+const squarePace = 5.5;
 let squarePosition = 0;
 let r = 0, g = 0, b = 200;
 
 //--GAME OVER TEXT--
-const centerX = canvas.width / 2
-const centerY = canvas.height / 2
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
 
 //-----MOVE FUNCTIONS-----
 let onPlatform = false;
+let PLATFORM_X = 0;
+let PLATFORM_Y = 0;
+
+//----BACKGROUND COLOUR CHANGE----
+let colourTimer;
+let timeColour = 0;
+let colourChange = false;
+
+//---- RANDOM PLAYER COLOURS----
+const playerColours = [
+    'Yellow','Orange', 'Red', 'Cyan', 'LightBlue', 'Red',
+    'Green', 'Silver', 'White', 'PeachPuff', 'Plum'
+    ];
+
+let fillColour, strokeColour;
+let yellow = 'yellow'
+
+do {
+    fillColour = playerColours[Math.floor(Math.random() * playerColours.length)];
+    strokeColour = playerColours[Math.floor(Math.random() * playerColours.length)];
+} while (fillColour === strokeColour);
+
 function boxJump() {
     let CUBE_X = CUBE_SIZE + 250;
     let CUBE_Y = GROUND_LINE - CUBE_SIZE - jump;
-    let PLATFORM_X = 0;
-    let PLATFORM_Y = 0;
-    
+   
     drawBackground();
+    
     drawObstacles();
     drawPlatforms();
     
+    onPlatform = false; 
+
     for (let i = 0; i < NUM_PLATFORM; i++) {
         PLATFORM_X = platformPositions[i];
-        PLATFORM_Y = GROUND_LINE - CUBE_SIZE;
-        
-        if (CUBE_X < PLATFORM_X + CUBE_SIZE &&
+        PLATFORM_Y = GROUND_LINE + (CUBE_SIZE * i);
+
+        if (
             CUBE_X + CUBE_SIZE > PLATFORM_X &&
-            CUBE_Y < PLATFORM_Y + CUBE_SIZE &&
-            CUBE_Y + CUBE_SIZE > PLATFORM_Y) {
+            CUBE_X < PLATFORM_X + CUBE_SIZE &&
+            CUBE_Y <= PLATFORM_Y
+        ) {
             onPlatform = true;
             break;
         } else {
-            if (jump <= 0 && (onPlatform == true)) {
-                onPlatform = false;
-            }
+            onPlatform = false;
         }
     }
+
     ctx.save();
     if (movingDown === false && (onPlatform == false) && (jumpTimerActive === true)) {
         if (jump <= -JUMP_HEIGHT) {
             movingDown = true;
-            canJump = false;
         } else {
-            jump -= 2;
+            jump -= 2.5;
         }
     } else {
         if (jump === 0 && (onPlatform == false)) {
+            JUMP_HEIGHT = 150;
             movingDown = false;
             clearInterval(jumpTimer);
             jumpTimerActive = false;
         } else if (jump <= 0 && (onPlatform == true)){
+            // console.log(jump);
             jumpTimerActive = false;
             movingDown = false;
+            JUMP_HEIGHT += 1.5;
+            document.addEventListener('keydown', function(event) {
+                if ((event.key === " " || event.key === "ArrowUp") && gameStatus === 1) {
+                    clearInterval(jumpTimer);
+                    jumpTimerActive = true;
+                    onPlatform = false;
+                    jumpTimer = setInterval(boxJump, JUMP_PACE);
+                }
+            })
         } else {
-            jump += 2;
+            jump += 2.5;
         }
     }
 
     ctx.translate(0, jump);
-    drawBox();
+    drawPlayer();
     ctx.restore();
+
 }
 
 function moveObstacles() {
-    if (jump === 0){
-        drawBackground();
-        drawBox();
-    } else {
-        ctx.clearRect(obstacle_position - OBSTACLE_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
-    }
-
-    drawGround();
-    drawObstacles();
-    drawPlatforms();
-    
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         obstaclePositions[i] -= OBSTACLE_PACE - 4;
 
         if (obstaclePositions[i] <= 0) {
             obstaclePositions[i] = CANVAS_WIDTH + CUBE_SIZE;
         }
-    }
-    collision();
-}
-
-function movePlatforms() {
-    if (jump === 0){
-        drawBackground();
-        drawBox();
-    } else {
-        ctx.clearRect(platform_position - PLATFORM_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+        if (jump === 0){
+            drawBackground();
+            drawPlayer();
+        // } else {
+        //     ctx.clearRect(obstaclePositions[i] - OBSTACLE_PACE, GROUND_LINE - CUBE_SIZE, CUBE_SIZE, CUBE_SIZE);
+        }
     }
 
     drawGround();
     drawObstacles();
     drawPlatforms();
     
+    collision();
+}
+
+function movePlatforms() {
     for (let i = 0; i < NUM_PLATFORM; i++) {
         platformPositions[i] -= PLATFORM_PACE - 4;
 
         if (platformPositions[i] <= 0) {
             platformPositions[i] = CANVAS_WIDTH + CUBE_SIZE;
         }
+        if (jump === 0){
+            drawBackground();
+            drawPlayer();
+        } else {
+            // ctx.clearRect(platformPositions[i] - PLATFORM_PACE, GROUND_LINE - CUBE_SIZE - (CUBE_SIZE * i), CUBE_SIZE, CUBE_SIZE);
+        }
     }
+
+    drawGround();
+    drawObstacles();
+    drawPlatforms();
+
+    collision();
 }
 
 //-----COLLISION VALIDATION-----
@@ -155,9 +204,11 @@ function collision() {
     let CUBE_Y = GROUND_LINE - CUBE_SIZE - jump;
     let OBSTACLE_X = 0;
     let OBSTACLE_Y = 0;
+    let PLATFORM_X = 0;
+    let PLATFORM_Y = 0;
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         OBSTACLE_X = obstaclePositions[i];
-        OBSTACLE_Y = GROUND_LINE - CUBE_SIZE;
+        OBSTACLE_Y = GROUND_LINE - CUBE_SIZE - 35;
 
         if (CUBE_X < OBSTACLE_X + CUBE_SIZE &&
             CUBE_X + CUBE_SIZE > OBSTACLE_X &&
@@ -169,46 +220,65 @@ function collision() {
                 break;
             }
     }
+
+    for (let j = 0; j < NUM_PLATFORM; j++) {
+        PLATFORM_X = platformPositions[j];
+        // PLATFORM_Y = GROUND_LINE - CUBE_SIZE;
+        PLATFORM_Y = GROUND_LINE + (CUBE_SIZE * j);
+        
+        if (CUBE_X < PLATFORM_X + CUBE_SIZE &&
+            CUBE_X + CUBE_SIZE > PLATFORM_X && 
+            CUBE_Y < PLATFORM_Y) {
+                audioPlayer.pause();
+                stopTimers();
+                break;
+        } 
+    }
 }
 
 //-----TIMERS-----
+function stopTimers() {
+    drawBackground();
+    drawGround();
+    drawObstacles();
+    drawPlatforms();
+    gameOverText();
+    gameStatus = 0;
+    clearInterval(jumpTimer);
+    clearInterval(obstacleTimer);
+    clearInterval(platformTimer);
+    clearInterval(colourTimer)
+    obstacleTimerActive = false;
+    jumpTimerActive = false;
+    platformTimerActive = false;
+    crashAudio.play();
+}
+
 function startTimers() {
     if (!jumpTimerActive && jump === 0) {
         jumpTimerActive = true;
         jumpTimer = setInterval(boxJump, JUMP_PACE);
     }
     
-    if (!obstacle_timer_active) {
+    if (!obstacleTimerActive) {
         for (let i = 0; i < NUM_OBSTACLES; i++) {
-            obstaclePositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_OBSTACLES);
+            obstaclePositions.push((CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_OBSTACLES + 1200));
         }
-        obstacle_timer_active = true;
-        obstacle_timer = setInterval(() => {
+        obstacleTimerActive = true;
+        obstacleTimer = setInterval(() => {
             moveObstacles();
             drawProgressBar();
         }, OBSTACLE_PACE);
     }
 
-    if (!platform_timer_active) {
-        for (let i = 0; i < NUM_PLATFORM; i++) {
-            i += 5;
+    if (!platformTimerActive) {
+        for (let i = 1; i <= NUM_PLATFORM; i++) {
+            i -= 0.5;
             platformPositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_PLATFORM);
         }
-        platform_timer_active = true;
-        platform_timer = setInterval(movePlatforms, PLATFORM_PACE);
+        platformTimerActive = true;
+        platformTimer = setInterval(movePlatforms, PLATFORM_PACE);
     }
-}
-
-function stopTimers() {
-    gameStatus = 0;
-    clearInterval(jumpTimer);
-    clearInterval(obstacle_timer);
-    clearInterval(platform_timer);
-    obstacle_timer_active = false;
-    jumpTimerActive = false;
-    platform_timer_active = false;
-    gameOverText();
-    crashAudio.play();
 }
 
 function resetObstaclesPlatforms() {
@@ -223,19 +293,34 @@ function resetObstaclesPlatforms() {
 }
 
 function resetButton() {
+    
     resetObstaclesPlatforms();
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     obstacle_position = -CANVAS_WIDTH;
     jump = 0;
+    JUMP_HEIGHT = 150;
+    // gameStatus = 1;
     movingDown = false;
+    timeColour = 0;
+    colourChange = false;
     r = 0, g = 0, b = 200;
     drawBackground();
     drawGround();
-    drawBox();
+    drawPlayer();
     backgroundColourChange();
-    gameStatus = 1;
+    
     button.style.display = 'none';
+    endScreen.style.display = 'none'
+    counter.style.display = 'none';
     audioPlayer.currentTime = 0;
+
+    if (gameStatus == 2 ) {
+        gameStatus = 1;
+    } else {
+        showAttempts();
+        gameStatus = 1;
+    }
+    attempts += 1;
 }
 
 //-----DRAW FUNCTIONS-----
@@ -265,7 +350,6 @@ function drawGround() {
 
 function backgroundColour() {
     let maxColor = Math.max(r, g, b);
-
         if (b === maxColor) {
             ctx.fillStyle = "rgb(" + r + ", 0, 0)";
         } else if (r === maxColor) {
@@ -276,41 +360,62 @@ function backgroundColour() {
 }
 
 function backgroundColourChange() {
-    setTimeout(function () {
-        r = 200;
-        g = 0;
-        b = 0;
-        backgroundColour();
-    }, 2000);
+    if (gameStatus === 1) {
+        switch (timeColour) {
+            case 1050:
+            case 3234:
+            case 5358:
+            case 7015:
+            case 8363.3:
+                r = 200;
+                g = 0;
+                b = 0;
+                backgroundColour();
+                break;
+            case 2137:
+            case 3748:
+            case 5922:
+            case 7555:
+                r = 0;
+                g = 200;
+                b = 0;
+                backgroundColour();
+                break;
+            case 2700:
+            case 4311:
+            case 6476.7:
+            case 8095:
+                r = 0;
+                g = 0;
+                b = 200;
+                backgroundColour();
+                break;
+            case 8600:
+                r = 200;
+                g = 200;
+                b = 200;
+                backgroundColour();
+                break;
+            case 8633.3: 
+                r = 0;
+                g = 0;
+                b = 0;
+                backgroundColour();
+                break;
+                
+            case 300:    
+                gameStatus = 2;
+                // obstaclePositions = [];
+                // platformPositions = [];
+                backgroundColour();
+                break;
+        }
 
-    setTimeout(function () {
-        r = 0;
-        g = 200;
-        b = 0;
-        backgroundColour();
-    }, 4000);
-
-    setTimeout(function () {
-        r = 0;
-        g = 0;
-        b = 200;
-        backgroundColour();
-    }, 6000);
+    }
 }
 
-const playerColours = [
-    'Yellow','Orange', 'Red', 'Cyan', 'LightBlue', 'Red',
-    'Green', 'Silver', 'White', 'PeachPuff', 'Plum'
-    ];
-
-let fillColour, strokeColour;
-do {
-    fillColour = playerColours[Math.floor(Math.random() * playerColours.length)];
-    strokeColour = playerColours[Math.floor(Math.random() * playerColours.length)];
-} while (fillColour === strokeColour);
-
-function drawBox() {
-    ctx.lineWidth = 2
+function drawPlayer() {
+    ctx.lineWidth = 2;
     ctx.fillStyle = fillColour;
     ctx.strokeStyle = strokeColour;
 
@@ -348,9 +453,11 @@ function drawBox() {
     ctx.lineTo(CUBE_SIZE + 45 + 250, GROUND_LINE - CUBE_SIZE + 30);  
     ctx.fill();
 }
+
 function drawObstacles() {
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         const obstacleX = obstaclePositions[i];
+        // console.log(obstacleX)
         ctx.lineWidth = 3
         ctx.strokeStyle = "white";
         ctx.fillStyle = 'black';
@@ -365,14 +472,29 @@ function drawObstacles() {
 }
 
 function drawPlatforms() {
-    ctx.lineWidth = 3
+    ctx.lineWidth = 3;
     ctx.fillStyle = 'black';
-    ctx.strokeStyle = 'white'
+    ctx.strokeStyle = 'white';
+
     for (let i = 0; i < NUM_PLATFORM; i++) {
         const platformX = platformPositions[i];
-        ctx.fillRect(platformX, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
-        ctx.strokeRect(platformX, GROUND_LINE - CUBE_SIZE,CUBE_SIZE,CUBE_SIZE);
-    
+        if (i === 0) {
+            boxY = GROUND_LINE - (CUBE_SIZE * (i+1));
+            ctx.fillRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+            ctx.strokeRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+        } else if (i == 1) {
+            for (let j = 0; j < 2; j++) { 
+                boxY = GROUND_LINE - (CUBE_SIZE * (j+1));
+                ctx.fillRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+                ctx.strokeRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+            }
+        } else {
+            for (let j = 0; j < 3; j++) { 
+                boxY = GROUND_LINE - (CUBE_SIZE * (j+1));
+                ctx.fillRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+                ctx.strokeRect(platformX, boxY, CUBE_SIZE, CUBE_SIZE);
+            }
+        }
     }
 }
 
@@ -391,40 +513,30 @@ function drawScrollingGround() {
     }
 }
 
-
-// jumppad is currently unused
-let flippedX = -canvas.width / 2;
-let flippedY = -canvas.height / 2
-
-function drawJumpPad() {
-    ctx.lineWidth = 3
-    ctx.strokeStyle = 'gold';
-    ctx.fillStyle = 'yellow';
-    ctx.save();
-    ctx.beginPath();
-    ctx.rotate(Math.PI);
-    ctx.arc(flippedX, flippedY, 50, 0, 1* Math.PI);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-}
-
-function drawSpike() {
-    ctx.lineWidth = 3
-    ctx.strokeStyle = "white";
-    ctx.fillStyle = 'black';
-    ctx.beginPath();
-    ctx.moveTo(50, 150);
-    ctx.lineTo(150, 150); 
-    ctx.lineTo(100, 50);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-}
-
 function drawProgressBar() {
     const progressBar_width = (audioPlayer.currentTime / audioPlayer.duration) * 100;
     progressBar.style.width = progressBar_width + '%';
+}
+
+function introText(yellow) {
+    ctx.textAlign = "center";
+
+    ctx.fillStyle = "black";
+    ctx.font = "100px Comic Sans MS";
+    ctx.fillText("THE PLAUSIBLE GAME", centerX + 2, centerY - 198);
+
+    ctx.font = "50px Comic Sans MS";
+    ctx.fillText("PRESS SPACEBAR TO START", centerX, centerY + 202);
+
+
+    ctx.fillStyle = "rgb(175,250,100)"
+    ctx.font = "100px Comic Sans MS";
+    ctx.fillText("THE PLAUSIBLE GAME", centerX, centerY - 200);
+
+    ctx.fillStyle = yellow;
+    ctx.font = "50px Comic Sans MS";
+    ctx.fillText("PRESS SPACEBAR TO START", centerX, centerY + 200);
+
 }
 
 function gameOverText() {
@@ -448,20 +560,76 @@ function gameOverText() {
     button.style.display = 'flex';
   }
 
+function endGameScreen() {
+    ctx.lineWidth = 20;
+    ctx.strokeStyle = "rgb(175,250,100)"
+    ctx.strokeRect(400, 150, 1100, 550);
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(400, 150, 1100, 550);
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillStyle = "rgb(0,255,255)"
+    ctx.fillRect(375, 125, 50, 50);
+    ctx.strokeRect(375, 125, 50, 50);
+    ctx.fillRect(1475, 125, 50, 50);
+    ctx.strokeRect(1475, 125, 50, 50);
+    ctx.fillRect(375, 675, 50, 50);
+    ctx.strokeRect(375, 675, 50, 50);
+    ctx.fillRect(1475, 675, 50, 50);
+    ctx.strokeRect(1475, 675, 50, 50);
+    ctx.fillRect(925, 675, 50, 50);
+    ctx.strokeRect(925, 675, 50, 50);
+    button.style.display = 'flex';
+    endScreen.style.display = 'block';
+    counter.style.display = 'block';
+    counter.innerHTML = "ATTEMPTS: " + attempts;
+}
+
+function showAttempts() {
+    ctx.textAlign = "center";
+    ctx.font = "80px Comic Sans MS";
+    
+    ctx.fillStyle = "black";
+    ctx.fillText("ATTEMPTS: "+ attempts, centerX + 2, centerY + 2);
+
+    ctx.fillStyle = "white"; 
+    ctx.fillText("ATTEMPTS: " + attempts, centerX, centerY);
+    
+}
+
 function init() {
-    gameStatus = 1
+    gameStatus = 1;
     drawBackground();
     drawGround();
-    drawBox();
-    backgroundColourChange();
+    drawPlayer();
+
+    let bulbOn = true;
+    let blinkTimer = setInterval(function() {
+        let randomColour = "rgb("+Math.floor(Math.random() * 256)+", "+Math.floor(Math.random() * 256)+", "+Math.floor(Math.random() * 256)+")";
+        let setColour = bulbOn ? yellow : randomColour;
+        introText(setColour);
+        bulbOn = bulbOn ? false : true;
+    },500)
 
     document.addEventListener('keydown', function(event){
         if (gameStatus === 1) {
-            if ((event.key === " " || event.key === "ArrowUp") && jump === 0 || onPlatform) {
-                // audioPlayer.play();
+            if ((event.key === " " || event.key === "ArrowUp") && (jump === 0 || onPlatform == true)) {
+                clearInterval(blinkTimer);
+                audioPlayer.play();
+                
+                if (!colourChange) {
+                    colourChange = true;
+                    colourTimer = setInterval(function () {
+                        timeColour++;
+                        backgroundColourChange();
+                    }, 10); //centiseconds
+                }
                 startTimers();
-            } 
+            }
         } else {
+            colourChange = false;
             gameStatus = 0;
         }
     });
