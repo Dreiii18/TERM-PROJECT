@@ -19,7 +19,7 @@ let jumpTimerActive = false;
 let JUMP_HEIGHT = 150;
 
 //--OBSTACLE MOTION--
-const OBSTACLE_PACE = 15;
+const OBSTACLE_PACE = 14;
 const NUM_OBSTACLES = 2;
 let obstaclePositions = [];
 let obstacle_position = CANVAS_WIDTH
@@ -28,8 +28,8 @@ let obstacleTimerActive = false;
 let obstacleTimer;
 
 //--PLATFORM MOTION--
-const PLATFORM_PACE = 15;
-const NUM_PLATFORM = 3;
+const PLATFORM_PACE = 14;
+const NUM_PLATFORM = 2;
 let platformPositions = [];
 let platform_position = CANVAS_WIDTH + CUBE_SIZE + 5;
 let moveLeft_Platform = false;
@@ -58,7 +58,7 @@ const progressBar = document.getElementById("myBar");
 let attempts = 1;
 
 //--SCROLLING GROUND VARIABLES--
-const squarePace = 5.5;
+const squarePace = 3;
 let squarePosition = 0;
 let r = 0, g = 0, b = 200;
 
@@ -157,6 +157,7 @@ function boxJump() {
 function moveObstacles() {
     for (let i = 0; i < NUM_OBSTACLES; i++) {
         obstaclePositions[i] -= OBSTACLE_PACE - 4;
+        // obstaclePositions[i] -= OBSTACLE_PACE;
 
         if (obstaclePositions[i] <= 0) {
             obstaclePositions[i] = CANVAS_WIDTH + CUBE_SIZE;
@@ -179,6 +180,7 @@ function moveObstacles() {
 function movePlatforms() {
     for (let i = 0; i < NUM_PLATFORM; i++) {
         platformPositions[i] -= PLATFORM_PACE - 4;
+        // platformPositions[i] -= PLATFORM_PACE;
 
         if (platformPositions[i] <= 0) {
             platformPositions[i] = CANVAS_WIDTH + CUBE_SIZE;
@@ -262,6 +264,7 @@ function startTimers() {
     
     if (!obstacleTimerActive) {
         for (let i = 0; i < NUM_OBSTACLES; i++) {
+            i -= 0.5;
             obstaclePositions.push((CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_OBSTACLES + 1200));
         }
         obstacleTimerActive = true;
@@ -272,9 +275,9 @@ function startTimers() {
     }
 
     if (!platformTimerActive) {
-        for (let i = 1; i <= NUM_PLATFORM; i++) {
-            i -= 0.5;
-            platformPositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_PLATFORM);
+        for (let i = 0; i < NUM_PLATFORM; i++) {
+            i -= 0.65;
+            platformPositions.push(CANVAS_WIDTH + i * CANVAS_WIDTH / NUM_PLATFORM + 500);
         }
         platformTimerActive = true;
         platformTimer = setInterval(movePlatforms, PLATFORM_PACE);
@@ -390,25 +393,24 @@ function backgroundColourChange() {
                 b = 200;
                 backgroundColour();
                 break;
-            case 8600:
-                r = 200;
+            case 8500:
+                r = 199;
                 g = 200;
-                b = 200;
+                b = 199;
                 backgroundColour();
                 break;
-            case 8633.3: 
+            case 8600: 
                 r = 0;
                 g = 0;
-                b = 0;
-                backgroundColour();
-                break;
-                
-            case 300:    
+                b = 1;
                 gameStatus = 2;
-                // obstaclePositions = [];
-                // platformPositions = [];
+                obstaclePositions = [];
+                platformPositions = [];
+
+                console.log("true");
                 backgroundColour();
                 break;
+
         }
 
     }
@@ -636,3 +638,9 @@ function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+ctx.imageSmoothingEnabled = false;
+ctx.webkitImageSmoothingEnabled = false;
+ctx.mozImageSmoothingEnabled = false;
+ctx.msImageSmoothingEnabled = false;
+ctx.oImageSmoothingEnabled = false;
